@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<account username="nike@gorras.com" passwd="gorrita"/>
+	<uaserver ip="127.0.0.1" puerto="8000"/>
+	<rtpaudio puerto="8001"/>
+	<regproxy ip="127.0.0.1" puerto="5000"/>
+	<log path="log_ua_2.txt"/>
+	<audio path="cancion.mp3"/>
+</config>
