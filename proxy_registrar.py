@@ -107,7 +107,24 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
                     self.wfile.write(bytes(mess, 'utf-8'))
                     print('Enviado -- 401 Unauthorized')
         elif method == 'INVITE':
-            pass
+            user_dst = receive.split('\r\n')[0].split()[1].split(':')[1]
+            user_src = receive.split('\r\n')[4].split('=')[1].split()[0]
+            ip = self.client_address[0]
+            port = str(self.client_address[1])
+            caddress = ip + ':' + port
+            if user_src in self.dicc:
+                if user_dst in self.dicc:
+                    ip_dst = self.dicc[user_dst][0]
+                    port_dst = int(self.dicc[user_dst][1])
+                    address = (ip_dst, port_dst)
+                    resp = self.sent(receive, address)
+                    if resp:
+                        self.wfile.write(bytes(resp, 'utf-8'))
+                else:
+                    self.wfile.write(b'SIP/2.0 404 User Not Found\r\n')
+                    print('Enviado -- 404 User Not Found')
+            else:
+                pass
         elif method == 'ACK':
             pass
         elif method == 'BYE':
