@@ -39,8 +39,20 @@ class SIPUAHandler(socketserver.DatagramRequestHandler):
     def handle(self):
         receive = self.rfile.read().decode('utf-8')
         print('Recibido -- ', receive)
+        method = receive.split()[0]
         if method == 'INVITE':
-            pass
+            ip_dst = receive.split('\r\n')[4].split()[-1]
+            port_dst = receive.split('\r\n')[7].split()[1]
+            self.rtp_ip = ip_dst
+            self.rtp_port = port_dst
+            user = config['account_username']
+            rtpport = config['rtpaudio_puerto']
+            ip = config['uaserver_ip']
+            mess = 'SIP/2.0 100 Trying\r\n\r\nSIP/2.0 180 Ringing\r\n\r\n'
+            mess += 'SIP/2.0 200 OK\r\nContent-Type: application/sdp\r\n\r\n'
+            mess += 'v=0\r\no=' + user + ' ' + ip + '\r\ns=misesion\r\n'
+            mess += 't=0\r\nm=audio ' + rtpport + ' RTP\r\n'
+            self.wfile.write(bytes(mess, 'utf-8'))
         elif method == 'ACK':
             pass
         elif method == 'BYE':
