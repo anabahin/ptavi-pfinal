@@ -47,6 +47,14 @@ def send_register_digest(socket, option, digest):
     print('Enviado -- ', mess)
     socket.send(bytes(mess, 'utf-8'))
 
+def send_invite(socket, option):
+    mess = 'INVITE sip:' + option + ' SIP/2.0\r\nContent-Type: '
+    mess += 'application/sdp\r\n\r\nv=0\r\no=' + config['account_username']
+    mess += ' ' + config['uaserver_ip'] + '\r\ns=misesion\r\nt=0\r\nm=audio '
+    mess += config['rtpaudio_puerto'] + ' RTP\r\n'
+    print('Enviado -- ', mess)
+    socket.send(bytes(mess, 'utf-8'))
+
 def receive_message(socket):
     pr_ip = proxy_address[0]
     pr_port = str(proxy_address[1])
@@ -125,7 +133,18 @@ if __name__ == '__main__':
             send_register_digest(my_socket, int(option), digest)
             data = receive_message(my_socket)
     elif method == 'INVITE':
-      pass
+        send_invite(my_socket, option)
+        data = receive_message(my_socket)
+        trying = 'SIP/2.0 100 Trying' in data
+        ringing = 'SIP/2.0 180 Ringing' in data
+        ok = 'SIP/2.0 200 OK' in data
+        if trying and ringing and ok:
+            send_ack(my_socket, option)
+            ip = data.split('\r\n')[8].split()[-1]
+            port = data.split('\r\n')[11].split()[1]
+            command = mp32rtp(ip, port) + ' & ' + cvlc(ip, port)
+            print('Ejecutando -- ', command)
+            os.system(command)
     elif method == 'BYE':
       pass
     else:
