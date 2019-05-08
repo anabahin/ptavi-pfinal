@@ -3,6 +3,7 @@
 
 import sys
 import json
+import socket
 import socketserver
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
@@ -63,6 +64,15 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
         except(FileNotFoundError):
             pass
 
+    def expiration(self):
+        expired = []
+        time_exp = strftime('%Y-%m-%d %H:%M:%S', gmtime(time() + 3600))
+        for user in self.dicc:
+            if self.dicc[user][1] <= time_exp:
+                expired.append(user)
+        for user in expired:
+            del self.dicc[user]
+        
     def handle(self):
         self.json2registered()
         receive = self.rfile.read().decode('utf-8')
@@ -128,10 +138,40 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
         elif method == 'ACK':
             pass
         elif method == 'BYE':
-            pass
+            user_dst = receive.split()[1].split(':')[1]
+            ip = self.client_address[0]
+            port = str(self.client_address[1])
+            caddress = ip + ':' + port
+            if user_dst in self.dicc:
+                address = (self.dicc[user_dst][0], int(self.dicc[user_dst][1]))
+                resp = self.sent(receive, address)
+                self.wfile.write(bytes(resp, 'utf-8'))
+            else:
+                self.wfile.write(b'SIP/2.0 404 User Not Found\r\n')
+                print('Enviado -- 404 User Not Found')
+        else:
+            self.wfile.write(b'SIP/2.0 405 Method Not Allowed\r\n')
+            ip = self.client_address[0]
+            port = str(self.client_address[1])
+            caddress = ip + ':' + port
+            print('Enviado -- 405 Method Not Allowed')
         else:
             pass
+        self.expiration()
         self.registered2json()
+        
+    def sent(self, mess, address):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
+            my_socket.connect(address)
+            my_socket.send(bytes(mess, 'utf-8'))
+            caddress = address[0] + ':' + str(address[1])
+            method = mess.split()[0]
+            print('Reenviado -- ', method)
+            try:
+                data = my_socket.recv(1024).decode('utf-8')
+                return data
+            except:
+                return ''
 
 
 if __name__ == "__main__":
