@@ -25,6 +25,7 @@ class XMLHandler(ContentHandler):
     def get_tags(self):
         return self.tags
 
+    
 def digest_response(nonce, passwd, username):
     digest = md5()
     digest.update(bytes(nonce, 'utf-8'))
@@ -33,11 +34,13 @@ def digest_response(nonce, passwd, username):
     digest.digest()
     return digest.hexdigest()
 
+
 def send_register(socket, option):
     mess = 'REGISTER sip:' + config['account_username'] + ':'
     mess += config['uaserver_puerto'] + ' SIP/2.0\r\nExpires: ' + str(option)
     print('Enviado -- ', mess)
     socket.send(bytes(mess, 'utf-8'))
+    
     
 def send_register_digest(socket, option, digest):
     mess = 'REGISTER sip:' + config['account_username'] + ':'
@@ -47,6 +50,7 @@ def send_register_digest(socket, option, digest):
     print('Enviado -- ', mess)
     socket.send(bytes(mess, 'utf-8'))
 
+    
 def send_invite(socket, option):
     mess = 'INVITE sip:' + option + ' SIP/2.0\r\nContent-Type: '
     mess += 'application/sdp\r\n\r\nv=0\r\no=' + config['account_username']
@@ -55,6 +59,13 @@ def send_invite(socket, option):
     print('Enviado -- ', mess)
     socket.send(bytes(mess, 'utf-8'))
 
+
+def send_bye(socket, option):
+    mess = 'BYE sip:' + option + ' SIP/2.0\r\n'
+    print('Enviado -- ', mess)
+    socket.send(bytes(mess, 'utf-8'))
+    
+    
 def receive_message(socket):
     pr_ip = proxy_address[0]
     pr_port = str(proxy_address[1])
@@ -66,6 +77,18 @@ def receive_message(socket):
         mess += ' port ' + pr_port
         sys.exit(mess)
     return data
+
+
+def mp32rtp(ip, port):
+    command = './mp32rtp -i ' + ip + ' -p ' + port
+    command += ' < ' + config['audio_path']
+    return command
+
+
+def cvlc(ip, port):
+    command = 'cvlc rtp://@' + ip + ':' + port
+    return command
+
 
 def get_file():
     if os.path.exists(sys.argv[1]):
@@ -93,7 +116,8 @@ def get_arguments():
     method = get_method()
     option = get_option(method)
     return xml_file, method, option
-      
+    
+    
 if __name__ == '__main__':
   
   conf = {'account': ['username', 'passwd'],
@@ -146,8 +170,10 @@ if __name__ == '__main__':
             print('Ejecutando -- ', command)
             os.system(command)
     elif method == 'BYE':
-      pass
+        send_bye(my_socket, option)
+        data = receive_message(my_socket)
     else:
-      pass
+        send_message(my_socket, method, option)
+        data = receive_message(my_socket)
     
   print('Socket terminado')
