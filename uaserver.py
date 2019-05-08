@@ -56,9 +56,9 @@ class SIPUAHandler(socketserver.DatagramRequestHandler):
         elif method == 'ACK':
             pass
         elif method == 'BYE':
-            pass
+            self.wfile.write(b'SIP/2.0 200 OK\r\n')
         else:
-            pass
+            self.wfile.write(b'SIP/2.0 405 Method not Allowed\r\n')
 
 if __name__ == "__main__":
   
