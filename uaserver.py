@@ -27,17 +27,40 @@ class XMLHandler(ContentHandler):
         return self.tags
 
 
+def date():
+    now = gmtime(time() + 3600)
+    return strftime('%Y%m%d%H%M%S', now)
+
+
+def write_log(line):
+    with open(config['log_path'], 'a') as log:
+        log.write(date() + ' ' + line + '\n')
+
+
 def get_file():
     if os.path.exists(sys.argv[1]):
         return sys.argv[1]
     else:
         sys.exit('file', sys.argv[1], 'not found')
 
+conf = {'account': ['username', 'passwd'],
+        'uaserver': ['ip', 'puerto'],
+        'rtpaudio': ['puerto'],
+        'regproxy': ['ip', 'puerto'],
+        'log': ['path'],
+        'audio': ['path']}
+
 
 class SIPUAHandler(socketserver.DatagramRequestHandler):
+    rtp_ip = ''
+    rtp_port = ''
 
     def handle(self):
         receive = self.rfile.read().decode('utf-8')
+        caddress = self.client_address[0] + ':' + str(self.client_address[1])
+        log_mess = 'Received from ' + caddress
+        log_mess += ': ' + receive.replace('\r\n', ' ')
+        write_log(log_mess)
         print('Recibido -- ', receive)
         method = receive.split()[0]
         if method == 'INVITE':
@@ -53,22 +76,28 @@ class SIPUAHandler(socketserver.DatagramRequestHandler):
             mess += 'v=0\r\no=' + user + ' ' + ip + '\r\ns=misesion\r\n'
             mess += 't=0\r\nm=audio ' + rtpport + ' RTP\r\n'
             self.wfile.write(bytes(mess, 'utf-8'))
+            log_mess = 'Sent to ' + caddress
+            log_mess += ': ' + mess.replace('\r\n', ' ')
+            write_log(log_mess)
         elif method == 'ACK':
-            pass
+            mp32rtp = './mp32rtp -i ' + self.rtp_ip + ' -p '
+            mp32rtp += self.rtp_port + ' < ' + config['audio_path']
+            cvlc = 'cvlc rtp://@' + self.rtp_ip + ':' + self.rtp_port
+            print('Ejecutando -- ', mp32rtp, '&', cvlc)
+            os.system(mp32rtp + ' & ' + cvlc)
+            self.rtp_ip = ''
+            self.rtp_port = ''
         elif method == 'BYE':
             self.wfile.write(b'SIP/2.0 200 OK\r\n')
+            log_mess = 'Sent to ' + caddress + ': SIP/2.0 200 OK'
+            write_log(log_mess)
         else:
             self.wfile.write(b'SIP/2.0 405 Method not Allowed\r\n')
+            log_mess = 'Sent to ' + caddress
+            log_mess += ': SIP/2.0 405 Method Not Allowed'
+            write_log(log_mess)
 
 if __name__ == "__main__":
-  
-  conf = {'account': ['username', 'passwd'],
-        'uaserver': ['ip', 'puerto'],
-        'rtpaudio': ['puerto'],
-        'regproxy': ['ip', 'puerto'],
-        'log': ['path'],
-        'audio': ['path']}
-  
     if len(sys.argv) == 2:
         xml_file = get_file()
     else:
@@ -85,6 +114,8 @@ if __name__ == "__main__":
 
     print("Lanzando servidor SIP de user agent...")
     try:
+        write_log('Starting server...')
         serv.serve_forever()
     except KeyboardInterrupt:
         print("Finalizado servidor")
+        write_log('Finishing server.')
