@@ -64,8 +64,8 @@ class SIPUAHandler(socketserver.DatagramRequestHandler):
         print('Recibido -- ', receive)
         method = receive.split()[0]
         if method == 'INVITE':
-            ip_dst = receive.split('\r\n')[4].split()[-1]
-            port_dst = receive.split('\r\n')[7].split()[1]
+            ip_dst = receive.split('\r\n')[6].split()[-1]
+            port_dst = receive.split('\r\n')[9].split()[1]
             self.rtp_ip = ip_dst
             self.rtp_port = port_dst
             user = config['account_username']
