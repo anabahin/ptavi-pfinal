@@ -192,7 +192,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         send_register(my_socket, option)
         data = receive_message(my_socket)
         if '401 Unauthorized' in data:
-            print('Recibido -- 401 Unauthorized')
             nonce = data.split('\r\n')[1].split('"')[-2]
             passwd = config['account_passwd']
             username = config['account_username']
