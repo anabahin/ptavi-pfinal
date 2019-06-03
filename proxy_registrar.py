@@ -7,6 +7,7 @@ import json
 import socket
 import socketserver
 from hashlib import md5
+from random import randint
 from time import gmtime, strftime, time
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
@@ -97,7 +98,7 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
         log_mess += ': ' + receive.replace('\r\n', ' ')
         write_log(log_mess)
         method = receive.split()[0]
-        print('Recibido -- ', method)
+        print('Recibido -- ', receive)
         if method == 'REGISTER':
             user = receive.split('\r\n')[0].split()[1].split(':')[1]
             if user in self.dicc:
@@ -166,7 +167,8 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
                     ip_dst = self.dicc[user_dst][0]
                     port_dst = int(self.dicc[user_dst][1])
                     address = (ip_dst, port_dst)
-                    resp = self.sent(receive, address)
+                    mess = self.add_headers(receive)
+                    resp = self.sent(mess, address)
                     if resp:
                         self.wfile.write(bytes(resp, 'utf-8'))
                         log_mess = 'Sent to ' + caddress + ': '
@@ -179,7 +181,11 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
                     write_log(log_mess)
                     print('Enviado -- 404 User Not Found')
             else:
-                pass
+                self.wfile.write(b'SIP/2.0 404 User Not Found\r\n')
+                log_mess = 'Sent to ' + caddress
+                log_mess += ': SIP/2.0 404 User Not Found'
+                write_log(log_mess)
+                print('Enviado -- 404 User Not Found')
         elif method == 'ACK':
             user_dst = receive.split()[1].split(':')[1]
             ip = self.client_address[0]
@@ -187,7 +193,8 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
             caddress = ip + ':' + port
             if user_dst in self.dicc:
                 address = (self.dicc[user_dst][0], int(self.dicc[user_dst][1]))
-                resp = self.sent(receive, address)
+                mess = self.add_headers(receive)
+                resp = self.sent(mess, address)
             else:
                 self.wfile.write(b'SIP/2.0 404 User Not Found\r\n')
                 log_mess = 'Sent to ' + caddress
@@ -201,7 +208,8 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
             caddress = ip + ':' + port
             if user_dst in self.dicc:
                 address = (self.dicc[user_dst][0], int(self.dicc[user_dst][1]))
-                resp = self.sent(receive, address)
+                mess = self.add_headers(receive)
+                resp = self.sent(mess, address)
                 self.wfile.write(bytes(resp, 'utf-8'))
             else:
                 self.wfile.write(b'SIP/2.0 404 User Not Found\r\n')
@@ -242,6 +250,17 @@ class SIPRegistrerHandler(socketserver.DatagramRequestHandler):
                 write_log(log_mess)
                 return ''
 
+    def add_headers(self, receive):
+        headers = 'Call-Id: ' + str(randint(0,9)) + ' ' 
+        headers += receive.split()[0] + '\r\n' + 'To: ' 
+        headers += receive.split('\r\n')[0].split()[1].split(':')[1] + '\r\n'
+        mess = ''
+        for line in receive.split('\r\n'):
+            if 'SIP/2.0' in line:
+                mess += line + '\r\n' + headers
+            else:
+                mess += line + '\r\n'
+        return mess
 
 if __name__ == "__main__":
 
